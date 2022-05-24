@@ -1,37 +1,37 @@
-# 服务设置
+# server config
 server:
-  # 端口
+  # port
   port: 8080
   tomcat:
     threads:
-      # Tomcat启动初始化的线程数，默认值10
+      # number of thread when tomcat initialize
       min-spare: 20
-      # Tomcat最大线程数，默认为200
+      # max of thread
       max: 200
 
 spring:
-  # MySQL连接参数
+  # MySQL connection param
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:car_booking}?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
     username: ${MYSQL_USERNAME:root}
     password: ${MYSQL_PASSWORD:123456}
-  # Redis连接参数
+  # Redis connection param
   redis:
     host: ${REDIS_HOST:localhost}
     port: ${REDIS_PORT:6379}
     database: ${REDIS_DATABASE:0}
     password: ${REDIS_PASSWORD:123456}
-  # Jackson配置
+  # Jackson config
   jackson:
     time-zone: GMT=8
     date-format: yyyy-MM-dd HH:mm:ss
 
-# MyBatis配置
+# MyBatis config
 mybatis:
   mapper-locations: classpath:mapper/**/*.xml
 
-# 日志配置
+# log config
 logging:
   config: classpath:logback-spring.xml
 

@@ -5,16 +5,23 @@ import lombok.Data;
 import javax.validation.constraints.NotBlank;
 
 /**
+ * user login request param
  * @author yanglingyu
  * @date 2022/5/23
  */
 @Data
 public class UserLoginRequest {
 
-    @NotBlank(message = "account cannot be blank")
+    /**
+     * account
+     */
+    @NotBlank(message = "account not blank")
     private String account;
 
-    @NotBlank(message = "password cannot be blank")
-    private String encryptedPassword;
+    /**
+     * password
+     */
+    @NotBlank(message = "password not blank")
+    private String password;
 
 }

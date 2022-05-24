@@ -5,6 +5,7 @@ import com.koryyang.carbooking.model.entity.UserEntity;
 import org.apache.ibatis.annotations.Mapper;
 
 /**
+ * user mapper
  * @author yanglingyu
  * @date 2022/5/23
  */

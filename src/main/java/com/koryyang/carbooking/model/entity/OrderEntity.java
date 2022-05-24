@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.time.LocalDate;
+
 /**
  * database entity of order
  * @author yanglingyu
@@ -11,7 +13,7 @@ import lombok.EqualsAndHashCode;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-@TableName("order")
+@TableName("t_order")
 public class OrderEntity extends BaseEntity {
 
     /**
@@ -21,15 +23,11 @@ public class OrderEntity extends BaseEntity {
     private String id;
 
     /**
-     * car model
+     * car id
+     * @see com.koryyang.carbooking.model.entity.CarEntity id
      */
     @TableField(insertStrategy = FieldStrategy.NOT_EMPTY)
-    private String carModel;
-
-    /**
-     * nums of car
-     */
-    private long nums;
+    private String carId;
 
     /**
      * user id
@@ -38,9 +36,10 @@ public class OrderEntity extends BaseEntity {
     @TableField(insertStrategy = FieldStrategy.NOT_EMPTY)
     private String userId;
 
-    /**
-     * has returned or not
-     */
-    private Boolean hasReturned;
+    @TableField(insertStrategy = FieldStrategy.NOT_NULL)
+    private LocalDate bookStartDate;
+
+    @TableField(insertStrategy = FieldStrategy.NOT_NULL)
+    private LocalDate bookEndDate;
 
 }

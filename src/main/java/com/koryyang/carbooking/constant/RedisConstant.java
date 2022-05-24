@@ -20,11 +20,26 @@ public class RedisConstant {
     /**
      * lock key prefix
      */
-    public static final String LOCK_PREFIX = "lock-";
+    public static final String LOCK_PREFIX = "lock:";
 
     /**
-     * car model key
+     * user token prefix
      */
-    public static final String KEY_CAR_MODEL = "car-model";
+    public static final String USER_TOKEN_PREFIX = "token:";
+
+    /**
+     * car id set
+     */
+    public static final String CAR_ID_SET = "car-id-set";
+
+    /**
+     * car id model map
+     */
+    public static final String CAR_ID_MODEL_MAP = "car-id-model-map";
+
+    /**
+     * car id set by model
+     */
+    public static final String CAR_ID_SET_BY_MODEL = "car-id-set:";
 
 }

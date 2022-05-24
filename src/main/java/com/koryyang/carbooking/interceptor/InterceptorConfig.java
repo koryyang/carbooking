@@ -1,4 +1,4 @@
-package com.koryyang.carbooking.framework.interceptor;
+package com.koryyang.carbooking.interceptor;
 
 import lombok.AllArgsConstructor;
 import org.springframework.context.annotation.Configuration;
@@ -27,7 +27,9 @@ public class InterceptorConfig implements WebMvcConfigurer {
                 // exclude register api
                 .excludePathPatterns("/api/v1/user/register")
                 // exclude login api
-                .excludePathPatterns("/api/v1/user/login");
+                .excludePathPatterns("/api/v1/user/login")
+                // exclude car query api
+                .excludePathPatterns("/api/v1/car/query");
     }
 
 }
