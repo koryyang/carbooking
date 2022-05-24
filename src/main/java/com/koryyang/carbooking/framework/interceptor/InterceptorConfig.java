@@ -24,6 +24,8 @@ public class InterceptorConfig implements WebMvcConfigurer {
         // register authenticationInterceptor
         registry.addInterceptor(authenticationInterceptor)
                 .addPathPatterns("/**")
+                // exclude get password rsa public key api
+                .excludePathPatterns("/api/v1/user/public_key")
                 // exclude register api
                 .excludePathPatterns("/api/v1/user/register")
                 // exclude login api

@@ -7,7 +7,7 @@
     </select>
 
     <update id="updateStock">
-        UPDATE car_stock SET stock = #{stock} WHERE car_model = #{carModel}
+        UPDATE car_stock SET stock = #{stock}, updated_at = CURRENT_TIMESTAMP WHERE car_model = #{carModel}
     </update>
 
     <select id="selectAllCarModels" resultType="string">

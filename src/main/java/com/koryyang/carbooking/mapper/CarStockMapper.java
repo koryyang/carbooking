@@ -8,6 +8,7 @@ import org.apache.ibatis.annotations.Param;
 import java.util.Set;
 
 /**
+ * car stock mapper
  * @author yanglingyu
  * @date 2022/5/23
  */

@@ -2,7 +2,6 @@ package com.koryyang.carbooking.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.koryyang.carbooking.exception.BusinessException;
-import com.koryyang.carbooking.exception.SystemException;
 import com.koryyang.carbooking.mapper.UserMapper;
 import com.koryyang.carbooking.model.bo.user.UserBO;
 import com.koryyang.carbooking.model.entity.UserEntity;
@@ -13,7 +12,7 @@ import com.koryyang.carbooking.service.UserService;
 import com.koryyang.carbooking.utils.JWTUtil;
 import com.koryyang.carbooking.utils.PasswordUtil;
 import lombok.AllArgsConstructor;
-import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 /**
@@ -24,32 +23,45 @@ import org.springframework.stereotype.Service;
 @AllArgsConstructor
 public class UserServiceImpl implements UserService {
 
-    private final UserMapper tenantMapper;
+    /**
+     * user mapper
+     */
+    private final UserMapper userMapper;
 
-    private final StringRedisTemplate stringRedisTemplate;
+    /**
+     * redis
+     */
+    private final RedisTemplate<String, String> redisTemplate;
 
+    /**
+     * register
+     * @param request request
+     */
     @Override
     public void register(UserRegisterRequest request) {
-        Long count = tenantMapper.selectCount(new QueryWrapper<UserEntity>().lambda()
+        Long count = userMapper.selectCount(new QueryWrapper<UserEntity>().lambda()
                 .eq(UserEntity::getAccount, request.getAccount()));
         if (count > 0) {
             throw new BusinessException("account has existed");
         }
+        // todo examine
         UserEntity entity = new UserEntity();
         entity.setAccount(request.getAccount());
         String encryptedPassword = request.getEncryptedPassword();
         String password = PasswordUtil.rsaDecrypted(encryptedPassword);
         entity.setHashPassword(PasswordUtil.hashPassword(password));
         entity.setPhone(request.getPhone());
-        int insert = tenantMapper.insert(entity);
-        if (insert != 1) {
-            throw new SystemException("注册失败");
-        }
+        userMapper.insert(entity);
     }
 
+    /**
+     * login
+     * @param request request
+     * @return login result
+     */
     @Override
     public UserLoginVO login(UserLoginRequest request) {
-        UserEntity entity = tenantMapper.selectOne(new QueryWrapper<UserEntity>().lambda()
+        UserEntity entity = userMapper.selectOne(new QueryWrapper<UserEntity>().lambda()
                 .eq(UserEntity::getAccount, request.getAccount()));
         if (entity == null) {
             throw new BusinessException("tenant not exist");
@@ -67,8 +79,12 @@ public class UserServiceImpl implements UserService {
         return vo;
     }
 
+    /**
+     * logout
+     * @param userBO userBO
+     */
     @Override
     public void logout(UserBO userBO) {
-        stringRedisTemplate.delete(userBO.getUserId());
+        redisTemplate.delete(userBO.getUserId());
     }
 }

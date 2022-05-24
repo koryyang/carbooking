@@ -1,7 +1,6 @@
 package com.koryyang.carbooking.framework.interceptor;
 
 import com.koryyang.carbooking.exception.BusinessException;
-import com.koryyang.carbooking.exception.SystemException;
 import com.koryyang.carbooking.model.bo.user.UserBO;
 import com.koryyang.carbooking.utils.JWTUtil;
 import com.koryyang.carbooking.utils.ServletUtil;
@@ -29,7 +28,7 @@ public class AuthenticationInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         String token = request.getHeader("token");
         if (StringUtils.isBlank(token)) {
-            throw new SystemException("token is missing");
+            throw new BusinessException("token is missing");
         }
         UserBO userBO = JWTUtil.verifyAndDecode(token);
         if (userBO == null) {
