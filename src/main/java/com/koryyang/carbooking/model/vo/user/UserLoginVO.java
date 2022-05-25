@@ -1,4 +1,4 @@
-package com.koryyang.carbooking.model.vo.tenant;
+package com.koryyang.carbooking.model.vo.user;
 
 import lombok.Data;
 
@@ -15,12 +15,6 @@ public class UserLoginVO {
      * @see com.koryyang.carbooking.model.entity id
      */
     private String userId;
-
-    /**
-     * role
-     * @see com.koryyang.carbooking.en.RoleEnum
-     */
-    private String role;
 
     /**
      * jwt

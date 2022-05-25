@@ -3,6 +3,7 @@ package com.koryyang.carbooking.exception;
 import com.koryyang.carbooking.model.vo.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -52,6 +53,28 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public Response<?> handleMethodArgumentNotValidException(MethodArgumentNotValidException ex) {
         String message = ex.getAllErrors().get(0).getDefaultMessage();
+        return Response.businessError(message);
+    }
+
+    /**
+     * handle illegal argument exception
+     * @param ex illegal argument exception
+     * @return exception response
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public Response<?> handleIllegalArgumentException(IllegalArgumentException ex) {
+        String message = ex.getMessage();
+        return Response.businessError(message);
+    }
+
+    /**
+     * handle bind exception
+     * @param ex bind exception
+     * @return exception response
+     */
+    @ExceptionHandler(BindException.class)
+    public Response<?> handleBindException(BindException ex) {
+        String message = ex.getFieldErrors().get(0).getDefaultMessage();
         return Response.businessError(message);
     }
 

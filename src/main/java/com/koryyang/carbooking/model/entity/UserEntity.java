@@ -11,7 +11,7 @@ import lombok.EqualsAndHashCode;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-@TableName("user")
+@TableName("t_user")
 public class UserEntity extends BaseEntity {
 
     /**
@@ -30,17 +30,6 @@ public class UserEntity extends BaseEntity {
      * password after hash
      */
     @TableField(insertStrategy = FieldStrategy.NOT_EMPTY)
-    private String hashPassword;
-
-    /**
-     * phone
-     */
-    private String phone;
-
-    /**
-     * role
-     * @see com.koryyang.carbooking.en.RoleEnum
-     */
-    private String role;
+    private String password;
 
 }

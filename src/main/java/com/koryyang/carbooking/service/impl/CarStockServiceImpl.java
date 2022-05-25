@@ -3,36 +3,43 @@ package com.koryyang.carbooking.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.koryyang.carbooking.constant.RedisConstant;
 import com.koryyang.carbooking.exception.BusinessException;
-import com.koryyang.carbooking.mapper.CarStockMapper;
-import com.koryyang.carbooking.model.entity.CarStockEntity;
-import com.koryyang.carbooking.model.request.car.CarAddRequest;
+import com.koryyang.carbooking.mapper.CarMapper;
+import com.koryyang.carbooking.mapper.OrderMapper;
+import com.koryyang.carbooking.model.bo.car.CarBookingTableBO;
+import com.koryyang.carbooking.model.entity.CarEntity;
+import com.koryyang.carbooking.model.entity.OrderEntity;
+import com.koryyang.carbooking.model.request.car.CarBookingRequest;
 import com.koryyang.carbooking.model.request.car.CarQueryRequest;
 import com.koryyang.carbooking.model.vo.car.CarQueryVO;
-import com.koryyang.carbooking.service.CarStockService;
+import com.koryyang.carbooking.model.vo.car.OrderQueryVO;
+import com.koryyang.carbooking.service.CarService;
+import com.koryyang.carbooking.utils.JacksonUtil;
+import com.koryyang.carbooking.utils.ServletUtil;
 import lombok.AllArgsConstructor;
 import lombok.SneakyThrows;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.util.Strings;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 
-import java.util.ArrayList;
+import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
- * car stock service implement
+ * car service implementation
  * @author yanglingyu
  * @date 2022/5/23
  */
 @Service
 @AllArgsConstructor
-public class CarStockServiceImpl implements CarStockService {
+public class CarStockServiceImpl implements CarService {
 
     /**
      * redis
@@ -40,9 +47,14 @@ public class CarStockServiceImpl implements CarStockService {
     private final RedisTemplate<String, String> redisTemplate;
 
     /**
-     * car stock mapper
+     * car mapper
      */
-    private final CarStockMapper carMapper;
+    private final CarMapper carMapper;
+
+    /**
+     * order mapper
+     */
+    private final OrderMapper orderMapper;
 
     /**
      * redisson for lock
@@ -55,140 +67,148 @@ public class CarStockServiceImpl implements CarStockService {
      * @return result of query
      */
     @Override
-    public List<CarQueryVO> queryCar(CarQueryRequest request) {
-        Set<String> carModelSet = getCarModelSet();
-        List<CarQueryVO> voList = new ArrayList<>();
-        // trans to empty if blank
-        String requestCarModel = StringUtils.defaultIfBlank(request.getCarModel(), Strings.EMPTY);
-        for (String carModel : carModelSet) {
-            if (StringUtils.contains(carModel, requestCarModel)) {
-                long carStock = getCarStock(carModel);
+    public Set<CarQueryVO> queryCar(CarQueryRequest request) {
+        Assert.isTrue(!request.getBookStartDate().isBefore(LocalDate.now()), "invalid, start date before today");
+        Assert.isTrue(!request.getBookEndDate().isBefore(request.getBookStartDate()), "invalid, end date before start date");
+        Set<CarQueryVO> voSet = new HashSet<>();
+        Set<String> carIdSet = getCarIdSet();
+        // look each car whether it can be booked
+        for (String carId : carIdSet) {
+            if (canBook(carId, request.getBookStartDate(), request.getBookEndDate())) {
                 CarQueryVO vo = new CarQueryVO();
-                vo.setCarModel(carModel);
-                vo.setInStock(carStock);
-                voList.add(vo);
+                vo.setCarModel(getCarModelById(carId));
+                voSet.add(vo);
             }
         }
-        return voList;
+        return voSet;
     }
 
     /**
-     * add car
+     * book car
      * @param request request
      */
     @SneakyThrows
     @Override
-    public void addCar(CarAddRequest request) {
-        CarStockEntity carStockEntity = carMapper.selectOne(new QueryWrapper<CarStockEntity>().lambda()
-                .eq(CarStockEntity::getCarModel, request.getCarModel()));
-        if (carStockEntity != null) {
-            // existed model
-            RLock lock = redissonClient.getLock(RedisConstant.LOCK_PREFIX + carStockEntity.getCarModel());
-            if (lock.tryLock(RedisConstant.TRY_LOCK_WAIT_TIME, TimeUnit.SECONDS)) {
-                try {
-                    addCarStock(carStockEntity.getCarModel(), request.getNums());
-                    return;
-                } finally {
-                    lock.unlock();
+    public void bookCar(CarBookingRequest request) {
+        Assert.isTrue(!request.getBookStartDate().isBefore(LocalDate.now()), "invalid, start date before today");
+        Assert.isTrue(!request.getBookEndDate().isBefore(request.getBookStartDate()), "invalid, end date before start date");
+        Set<String> carIdSet = getCarIdSetByModel(request.getCarModel());
+        for (String carId : carIdSet) {
+            if (canBook(carId, request.getBookStartDate(), request.getBookEndDate())) {
+                // lock this car before book
+                RLock lock = redissonClient.getLock(RedisConstant.LOCK_PREFIX + carId);
+                if (lock.tryLock(RedisConstant.TRY_LOCK_WAIT_TIME, TimeUnit.SECONDS)) {
+                    try {
+                        CarBookingTableBO bo = new CarBookingTableBO();
+                        bo.setBookStartDate(request.getBookStartDate());
+                        bo.setBookEndDate(request.getBookEndDate());
+                        // add book date table of this car
+                        redisTemplate.opsForSet().add(carId, JacksonUtil.toJson(bo));
+                        String userId = ServletUtil.getCurrentUser().getUserId();
+                        // insert order async to protect high efficiency
+                        CompletableFuture.runAsync(() -> {
+                            OrderEntity orderEntity = new OrderEntity();
+                            orderEntity.setCarId(carId);
+                            orderEntity.setUserId(userId);
+                            orderEntity.setBookStartDate(request.getBookStartDate());
+                            orderEntity.setBookEndDate(request.getBookEndDate());
+                            orderMapper.insert(orderEntity);
+                        });
+                        return;
+                    } finally {
+                        lock.unlock();
+                    }
+                } else {
+                    throw new BusinessException("service busy, please try again later");
                 }
             }
-            throw new BusinessException("service busy, please try again later");
-        } else {
-            // new model
-            addNewCarModel(request.getCarModel(), request.getNums());
         }
+        throw new BusinessException("book failed，not enough of this model");
     }
 
     /**
-     * judge if car model exist
-     * @param carModel car model
-     * @return car model exist or not
+     * query order
+     * @return order list
      */
     @Override
-    public boolean isCarModelExist(String carModel) {
-        Set<String> carModelSet = getCarModelSet();
-        return carModelSet.contains(carModel);
+    public List<OrderQueryVO> queryOrder() {
+        return orderMapper.selectOrder(ServletUtil.getCurrentUser().getUserId());
     }
 
     /**
-     * get all car models
-     * @return set of car models
+     * get every car id
+     * @return car id set
      */
-    @Override
-    public Set<String> getCarModelSet() {
-        Set<String> carModelSet = redisTemplate.opsForSet().members(RedisConstant.KEY_CAR_MODEL);
-        if (CollectionUtils.isEmpty(carModelSet)) {
-            carModelSet = carMapper.selectAllCarModels();
-            redisTemplate.opsForSet().add(RedisConstant.KEY_CAR_MODEL, carModelSet.toArray(new String[0]));
-            redisTemplate.expire(RedisConstant.KEY_CAR_MODEL, RedisConstant.DATA_EXPIRE_TIME, TimeUnit.HOURS);
+    private Set<String> getCarIdSet() {
+        Set<String> resultSet = redisTemplate.opsForSet().members(RedisConstant.CAR_ID_SET);
+        if (CollectionUtils.isEmpty(resultSet)) {
+            // get data from database
+            Set<String> carIdSet = carMapper.selectCarIdSet();
+            if (!CollectionUtils.isEmpty(carIdSet)) {
+                redisTemplate.opsForSet().add(RedisConstant.CAR_ID_SET, carIdSet.toArray(new String[0]));
+                resultSet = carIdSet;
+            }
         }
-        return carModelSet;
+        return resultSet;
     }
 
     /**
-     * get car stock from redis or database
-     * @param carModel car model
-     * @return car stock
+     * get car model by id
+     * @param carId car id
+     * @return model
      */
-    @Override
-    public long getCarStock(String carModel) {
-        String stockString = redisTemplate.opsForValue().get(carModel);
-        long stock;
-        if (stockString == null) {
-            Long count = carMapper.selectStock(carModel);
-            redisTemplate.opsForValue().set(carModel, count.toString(), RedisConstant.DATA_EXPIRE_TIME, TimeUnit.HOURS);
-            stock = count;
-        } else {
-            stock = Long.parseLong(stockString);
+    private String getCarModelById(String carId) {
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(RedisConstant.CAR_ID_MODEL_MAP))) {
+            return redisTemplate.opsForHash().get(RedisConstant.CAR_ID_MODEL_MAP, carId).toString();
         }
-        return stock;
+        // get data from database
+        List<CarEntity> entityList = carMapper.selectList(new QueryWrapper<>());
+        String model = null;
+        for (CarEntity entity : entityList) {
+            redisTemplate.opsForHash().put(RedisConstant.CAR_ID_MODEL_MAP, entity.getId(), entity.getModel());
+            if (entity.getId().equals(carId)) {
+                model = entity.getModel();
+            }
+        }
+        return model;
     }
 
     /**
-     * set car stock to redis and database
-     * you should lock before call this method
-     * @param carModel car model
-     * @param reduceStock car stock
+     * get car id set by model
+     * @param model model
+     * @return car id set
      */
-    @SneakyThrows
-    @Override
-    public void reduceCarStock(String carModel, long reduceStock) {
-        long carStock = getCarStock(carModel);
-        assert carStock >= reduceStock;
-        redisTemplate.opsForValue().set(carModel, Long.toString(carStock - reduceStock), RedisConstant.DATA_EXPIRE_TIME, TimeUnit.HOURS);
-        // update database async
-        CompletableFuture.runAsync(() -> carMapper.updateStock(carModel, carStock - reduceStock));
+    private Set<String> getCarIdSetByModel(String model) {
+        Set<String> resultSet = redisTemplate.opsForSet().members(RedisConstant.CAR_ID_SET_BY_MODEL + model);
+        if (CollectionUtils.isEmpty(resultSet)) {
+            // get data from database
+            Set<String> carIdSet = carMapper.selectCarIdSetByModel(model);
+            if (!CollectionUtils.isEmpty(carIdSet)) {
+                redisTemplate.opsForSet().add(RedisConstant.CAR_ID_SET_BY_MODEL + model, carIdSet.toArray(new String[0]));
+                resultSet = carIdSet;
+            }
+        }
+        return resultSet;
     }
 
     /**
-     * add car stock to redis and database
-     * you should lock before call this method
-     * @param carModel car model
-     * @param addStock add car stock
+     * whether a car can be booked or not
+     * @param carId car id
+     * @param bookStartDate book start date
+     * @param bookEndDate  book end date
+     * @return whether a car can be booked
      */
-    @Override
-    public void addCarStock(String carModel, long addStock) {
-        long carStock = getCarStock(carModel);
-        redisTemplate.opsForValue().set(carModel, Long.toString(carStock + addStock));
-        // update database async
-        CompletableFuture.runAsync(() -> carMapper.updateStock(carModel, carStock + addStock));
-    }
-
-    /**
-     * add new car model to redis and database
-     * you should lock before call this method
-     * @param carModel car model
-     * @param stock car stock
-     */
-    private void addNewCarModel(String carModel, long stock) {
-        redisTemplate.opsForValue().set(carModel, Long.toString(stock), RedisConstant.DATA_EXPIRE_TIME, TimeUnit.HOURS);
-        // insert into database async
-        CompletableFuture.runAsync(() -> {
-            CarStockEntity entity = new CarStockEntity();
-            entity.setCarModel(carModel);
-            entity.setStock(stock);
-            carMapper.insert(entity);
-        });
+    private boolean canBook(String carId, LocalDate bookStartDate, LocalDate bookEndDate) {
+        // date table of a car that has booked
+        Set<String> carBookingSet = redisTemplate.opsForSet().members(carId);
+        Set<CarBookingTableBO> boSet = new HashSet<>();
+        for (String json : carBookingSet) {
+            CarBookingTableBO bo = JacksonUtil.toBean(json, CarBookingTableBO.class);
+            boSet.add(bo);
+        }
+        // 核心就是去掉开始日期大于需订阅结束日期或者结束日期小于需订阅开始日期之后的数据，是否为空，空就表示可以租赁
+        Set<CarBookingTableBO> collect = boSet.stream().filter(bo -> !(bo.getBookStartDate().isAfter(bookEndDate) || bo.getBookEndDate().isBefore(bookStartDate))).collect(Collectors.toSet());
+        return collect.isEmpty();
     }
 
 }

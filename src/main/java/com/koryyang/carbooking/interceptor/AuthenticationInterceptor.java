@@ -1,5 +1,6 @@
-package com.koryyang.carbooking.framework.interceptor;
+package com.koryyang.carbooking.interceptor;
 
+import com.koryyang.carbooking.constant.RedisConstant;
 import com.koryyang.carbooking.exception.BusinessException;
 import com.koryyang.carbooking.model.bo.user.UserBO;
 import com.koryyang.carbooking.utils.JWTUtil;
@@ -31,15 +32,12 @@ public class AuthenticationInterceptor implements HandlerInterceptor {
             throw new BusinessException("token is missing");
         }
         UserBO userBO = JWTUtil.verifyAndDecode(token);
-        if (userBO == null) {
-            throw new BusinessException("incorrect token");
-        }
-        Boolean hasKey = redisTemplate.hasKey(userBO.getUserId());
+        Boolean hasKey = redisTemplate.hasKey(RedisConstant.USER_TOKEN_PREFIX + userBO.getAccount());
         if (hasKey == null || !hasKey) {
             throw new BusinessException("incorrect token");
         }
         // set user info of current thread
-        ServletUtil.setCurrentTenant(userBO);
+        ServletUtil.setCurrentUser(userBO);
         return true;
     }
 

@@ -25,7 +25,7 @@ public class ServletUtil {
      * set current user info
      * @param userBO userBO
      */
-    public static void setCurrentTenant(UserBO userBO) {
+    public static void setCurrentUser(UserBO userBO) {
         CURRENT_TENANT_HOLDER.set(userBO);
     }
 

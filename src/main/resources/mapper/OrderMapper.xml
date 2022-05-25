@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.koryyang.carbooking.mapper.OrderMapper">
+
+    <select id="selectOrder" parameterType="string" resultType="com.koryyang.carbooking.model.vo.car.OrderQueryVO">
+        SELECT o.id AS orderId, o.book_start_date AS bookStartDate, o.book_end_date AS bookEndDate, c.id AS carId, c.model AS model
+        FROM t_order o INNER JOIN t_car c ON o.car_id = c.id
+        WHERE o.user_id = #{userId}
+    </select>
+
+</mapper>

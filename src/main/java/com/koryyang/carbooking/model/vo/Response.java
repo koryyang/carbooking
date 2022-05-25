@@ -46,7 +46,7 @@ public class Response<T> {
     //========================系统异常返回=============================
 
     public static <T> Response<T> systemError() {
-        return new Response<T>(500, "error", null);
+        return new Response<T>(500, "unexpected error", null);
     }
 
 }
