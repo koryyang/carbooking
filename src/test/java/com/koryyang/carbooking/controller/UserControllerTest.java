@@ -1,14 +1,12 @@
 package com.koryyang.carbooking.controller;
 
-import com.koryyang.carbooking.model.request.tenant.UserLoginRequest;
-import com.koryyang.carbooking.model.request.tenant.UserRegisterRequest;
+import com.koryyang.carbooking.model.request.user.UserLoginRequest;
+import com.koryyang.carbooking.model.request.user.UserRegisterRequest;
 import com.koryyang.carbooking.model.vo.Response;
 import com.koryyang.carbooking.model.vo.user.UserLoginVO;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * @author yanglingyu

@@ -1,16 +1,16 @@
-package com.koryyang.carbooking.model.request.tenant;
+package com.koryyang.carbooking.model.request.user;
 
 import lombok.Data;
 
 import javax.validation.constraints.NotBlank;
 
 /**
- * user login request param
+ * user register request param
  * @author yanglingyu
  * @date 2022/5/23
  */
 @Data
-public class UserLoginRequest {
+public class UserRegisterRequest {
 
     /**
      * account
